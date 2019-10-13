@@ -12,20 +12,27 @@ import {
 import {FloatingAction} from 'react-native-floating-action'
 import { Actions } from 'react-native-router-flux';
 import AsyncStorage from '@react-native-community/async-storage';
-import SearchInput from 'react-native-search-filter';
+import SearchInput,{createFilter} from 'react-native-search-filter';
+
+const KEY_TO_FILTERS =['name','phone'];
+const {height, width} = Dimensions.get('window');
 export default class MainContact extends Component {
   constructor (props) {
     super(props);
     this.state = {
+      serachItem:'',
       dataList: [],
     };
+  }
+ 
+  _searchText = (term) => {
+    this.setState({serachItem : term})
   }
   
   async componentDidMount() {
     try {
       let keys = await AsyncStorage.getAllKeys();
       keys.forEach(async inkey => {
-        console.log(inkey);
         let user = JSON.parse(await AsyncStorage.getItem(inkey));
         let data = this.state.dataList.concat(user);
         this.setState({ dataList: data });
@@ -34,8 +41,9 @@ export default class MainContact extends Component {
       console.log(e);
     }
   }
+
   render() {
-    var {height, width} = Dimensions.get('window');
+    const filterData = this.state.dataList.filter(createFilter(this.state.serachItem,KEY_TO_FILTERS));
     return (
       <View style={{ flex: 1 }}>
         <View style={styles.search}>
@@ -46,16 +54,17 @@ export default class MainContact extends Component {
           <SearchInput
             style={styles.searchInput}
             placeholder="Type a message to search"
+            onChangeText = {this._searchText}
           />
         </View>
         <View style={{ flex: 84 ,marginBottom:1}}>
           <FlatList
-            data={this.state.dataList}
+            data={filterData}
             extraData={this.state.dataList}
             keyExtractor={(item, index) => index.toString()}
             renderItem={({ item, index }) => {
               return (
-                <View style={{ height: height*0.84/6 , backgroundColor :"#4567",borderColor:'black',borderWidth:1}}>
+                <View style={styles.container}>
                   <View style={styles.itemContainer}>
                     <TouchableOpacity
                       onPress={() => {
@@ -71,10 +80,7 @@ export default class MainContact extends Component {
                       />
                     </TouchableOpacity>
                     <Text style={styles.textName}>{item.name}</Text>
-                    <TouchableOpacity onPress={_dialNumber = () => {
-                        let numberPhone = 'tel:${' + item.phone + '}';
-                        Linking.openURL(numberPhone);
-                      }}>
+                    <TouchableOpacity onPress={this._dialNumber}>
                       <Image
                         source={require('../image/phone.png')}
                         style={styles.phoneButton}
@@ -93,17 +99,26 @@ export default class MainContact extends Component {
       </View>
     );
   }
-
+  _dialNumber = () => {
+    let numberPhone = 'tel:${' + item.phone + '}';
+    Linking.openURL(numberPhone);
+  }
    _toAddContact = () => {
     Actions.addContactScreen();
   };
 }
 const styles = StyleSheet.create({
+  container : {
+    height: height*0.84/6 ,
+    backgroundColor :"#4567",
+    borderColor:'black',
+    borderWidth:1
+  },
   itemContainer: {
     flexDirection: 'row',
     marginBottom: 30,
     justifyContent: 'space-between',
-    marginTop : 25,
+    marginTop : 25
 
   },
   search: {
@@ -113,13 +128,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flex: 6,
     alignItems: 'center',
-    borderRadius: 3,
+    borderRadius: 3
   },
   searchButton: {
     width: 25,
     height: 25,
     marginTop: 3,
-    marginLeft: 2,
+    marginLeft: 2
   },
   searchInput: {
     width: 300,
